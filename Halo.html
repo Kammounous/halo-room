@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0a090e">
+<title>Halo Room</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Unbounded:wght@500;700&display=swap">
+<style>
+:root {
+  --ink: #0a090e;
+  --glass: rgba(26, 24, 34, 0.62);
+  --glass-strong: rgba(32, 30, 42, 0.9);
+  --line: rgba(255, 255, 255, 0.14);
+  --text: #f4f1f8;
+  --muted: #b2acbf;
+  --accent: #ffb25e;
+  --danger: #ff7a7a;
+  --ok: #5ad17a;
+  --pill: #f6f3fa;
+  --pill-ink: #18161f;
+  --font-display: "Unbounded", "Avenir Next", system-ui, sans-serif;
+  --font-body: "Figtree", -apple-system, "Segoe UI", system-ui, sans-serif;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; background: var(--ink); color: var(--text); font-family: var(--font-body); overflow: hidden; overscroll-behavior: none; -webkit-user-select: none; user-select: none; -webkit-tap-highlight-color: transparent; -webkit-touch-callout: none; }
+[hidden] { display: none !important; }
+button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; padding: 0; }
+button:focus-visible, input:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+#cam { position: fixed; inset: 0; width: 100%; height: 100%; object-fit: cover; background: radial-gradient(120% 80% at 50% 30%, #241f2e, #0a090e); }
+#shade { position: fixed; inset: 0; pointer-events: none; background: rgba(5,4,10,0); transition: background .6s; }
+#pins { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
+
+.pin { position: absolute; left: 0; top: 0; width: 0; height: 0; pointer-events: auto; will-change: transform; }
+.pin .halo { position: absolute; left: -170px; top: -170px; width: 340px; height: 340px; border-radius: 50%; pointer-events: none; background: radial-gradient(circle, var(--c, transparent) 0%, transparent 62%); opacity: 0; mix-blend-mode: screen; transition: opacity .5s; }
+.pin .label { position: absolute; left: 0; bottom: 38px; transform: translateX(-50%); padding: 5px 11px; border-radius: 999px; font-size: 12.5px; font-weight: 600; white-space: nowrap; background: var(--pill); color: var(--pill-ink); box-shadow: 0 4px 14px rgba(0,0,0,.35); }
+.pin .dot { position: absolute; left: -26px; top: -26px; width: 52px; height: 52px; border-radius: 50%; border: 2.5px solid rgba(255,255,255,.95); background: rgba(10,9,14,.28); box-shadow: 0 0 0 1px rgba(0,0,0,.25), 0 6px 18px rgba(0,0,0,.35); display: grid; place-items: center; transition: transform .2s; }
+.pin .dot::after { content: ""; width: 16px; height: 16px; border-radius: 50%; background: var(--c, #fff); box-shadow: 0 0 14px var(--c, #fff); transition: background .3s, box-shadow .3s; }
+.pin .dot::before { content: ""; position: absolute; left: 50%; bottom: -11px; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: #fff; }
+.pin.off .dot::after { background: rgba(255,255,255,.2); box-shadow: none; }
+.pin.aimed .dot, .pin.sel .dot { transform: scale(1.12); }
+.pin.sel .label { bottom: 86px; }
+.pin .bt { position: absolute; left: 18px; top: -32px; width: 18px; height: 18px; border-radius: 50%; background: var(--ok); display: grid; place-items: center; box-shadow: 0 0 0 2px var(--ink); }
+.pin .bt svg { width: 11px; height: 11px; color: #0a2a14; }
+
+.ring { position: absolute; left: 0; top: 0; width: 156px; height: 156px; margin: -78px 0 0 -78px; border-radius: 50%; pointer-events: none; touch-action: none;
+  background: conic-gradient(from 0deg, #ff3b3b, #ffb13b, #f2ff3b, #3bff6a, #3bf2ff, #3b6bff, #b13bff, #ff3bc4, #ff3b3b);
+  -webkit-mask: radial-gradient(circle, transparent 56px, #000 57px, #000 73px, transparent 74px);
+  mask: radial-gradient(circle, transparent 56px, #000 57px, #000 73px, transparent 74px);
+  opacity: 0; transition: opacity .25s; }
+.ring.show { opacity: 1; pointer-events: auto; }
+.ring-thumb { position: absolute; left: 0; top: 0; width: 26px; height: 26px; margin: -13px 0 0 -13px; border-radius: 50%; border: 3px solid #fff; background: var(--c, #fff); box-shadow: 0 2px 10px rgba(0,0,0,.5); pointer-events: none; opacity: 0; }
+.ring-thumb.show { opacity: 1; }
+
+.reticle { position: fixed; left: 50%; top: 42%; width: 64px; height: 64px; margin: -32px 0 0 -32px; border-radius: 50%; border: 2px solid rgba(255,255,255,.9); box-shadow: 0 0 0 1px rgba(0,0,0,.3); pointer-events: none; }
+.reticle::after { content: ""; position: absolute; left: 50%; top: 50%; width: 6px; height: 6px; margin: -3px 0 0 -3px; border-radius: 50%; background: #fff; }
+
+.edge { position: absolute; width: 30px; height: 30px; margin: -15px 0 0 -15px; border-radius: 50%; background: var(--glass); border: 1px solid var(--line); display: grid; place-items: center; pointer-events: none; }
+.edge::after { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--c, #fff); }
+
+.topbar { position: fixed; top: 0; left: 0; right: 0; z-index: 5; padding: calc(env(safe-area-inset-top, 0px) + 10px) max(16px, env(safe-area-inset-right, 0px)) 18px max(16px, env(safe-area-inset-left, 0px)); display: grid; grid-template-columns: 44px 1fr 44px 44px; align-items: center; gap: 8px; background: linear-gradient(to bottom, rgba(10,9,14,.6), rgba(10,9,14,0)); }
+.icon-btn { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; background: var(--glass); border: 1px solid var(--line); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.icon-btn svg { width: 20px; height: 20px; }
+.icon-btn.live { background: rgba(255, 90, 90, .85); border-color: transparent; }
+.room-title { text-align: center; font-weight: 600; font-size: 16px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; text-shadow: 0 1px 8px rgba(0,0,0,.6); }
+
+.hint { position: fixed; z-index: 5; left: 50%; transform: translateX(-50%); top: calc(env(safe-area-inset-top, 0px) + 64px); max-width: calc(100% - 32px); display: flex; align-items: center; gap: 10px; padding: 6px 6px 6px 14px; min-height: 34px; border-radius: 999px; font-size: 12.5px; background: var(--glass); border: 1px solid var(--line); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); }
+.hint span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 8px; }
+.hint button { flex: none; height: 26px; padding: 0 12px; border-radius: 999px; background: var(--pill); color: var(--pill-ink); font-weight: 700; font-size: 12px; }
+.hint.warn { background: rgba(255, 178, 94, .2); border-color: rgba(255, 178, 94, .55); }
+
+.spell { position: fixed; z-index: 9; left: 0; right: 0; top: 36%; text-align: center; font: 700 clamp(40px, 13vw, 76px)/1 var(--font-display); letter-spacing: .04em; color: #fff; pointer-events: none; opacity: 0; text-shadow: 0 0 30px rgba(255,200,120,.9), 0 0 80px rgba(255,170,80,.6); }
+.spell.go { animation: spell 1.4s ease forwards; }
+.spell.nox { text-shadow: 0 0 30px rgba(140,150,255,.8), 0 0 80px rgba(80,90,200,.6); }
+@keyframes spell { 0% { opacity: 0; transform: scale(.85); letter-spacing: .3em; } 25% { opacity: 1; transform: scale(1); letter-spacing: .04em; } 70% { opacity: 1; } 100% { opacity: 0; } }
+
+.bottom { position: fixed; left: 0; right: 0; bottom: 0; z-index: 6; padding: 0 max(12px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 12px) max(12px, env(safe-area-inset-left, 0px)); display: flex; flex-direction: column; gap: 10px; align-items: center; pointer-events: none; }
+.bottom > * { pointer-events: auto; width: 100%; max-width: 440px; }
+.sheet { border-radius: 28px; padding: 16px; display: flex; flex-direction: column; gap: 10px; background: var(--glass); border: 1px solid var(--line); -webkit-backdrop-filter: blur(26px) saturate(1.3); backdrop-filter: blur(26px) saturate(1.3); box-shadow: 0 20px 50px rgba(0,0,0,.45); }
+.sheet-head { display: flex; align-items: center; gap: 12px; }
+.title-wrap { flex: 1; min-width: 0; }
+.name { width: 100%; font: 600 19px/1.2 var(--font-body); color: var(--text); background: none; border: 0; padding: 2px 0; -webkit-user-select: text; user-select: text; }
+.name[readonly] { pointer-events: none; }
+.status { font-size: 13px; color: var(--muted); margin-top: 2px; font-variant-numeric: tabular-nums; }
+.power { width: 54px; height: 54px; border-radius: 50%; display: grid; place-items: center; flex: none; background: rgba(255,255,255,.1); border: 1px solid var(--line); }
+.power svg { width: 24px; height: 24px; }
+.power.on { background: var(--pill); color: var(--pill-ink); box-shadow: 0 0 22px rgba(255,255,255,.25); }
+.slider { position: relative; height: 50px; border-radius: 18px; overflow: hidden; background: rgba(255,255,255,.1); touch-action: none; }
+.slider .fill { position: absolute; inset: 0 auto 0 0; width: 50%; border-radius: 18px; background: var(--pill); }
+.slider .ico { position: absolute; left: 16px; top: 50%; width: 20px; height: 20px; margin-top: -10px; color: var(--pill-ink); pointer-events: none; }
+.slider .val { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); font-size: 13px; color: var(--muted); font-variant-numeric: tabular-nums; pointer-events: none; }
+.slider.warm { background: linear-gradient(90deg, #ff9a3d, #ffd29a 45%, #f4f4ff 70%, #bcd6ff); }
+.slider.warm .knob { position: absolute; top: 5px; bottom: 5px; width: 8px; margin-left: -4px; border-radius: 4px; background: #fff; box-shadow: 0 0 0 2px rgba(0,0,0,.35); pointer-events: none; }
+.slider.warm .val { color: rgba(24,22,31,.75); font-weight: 600; }
+.slider.warm .ico { color: rgba(24,22,31,.85); }
+.slider.warm.inactive { filter: saturate(.35) brightness(.7); }
+.swatches { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+.sw { width: 28px; height: 28px; border-radius: 50%; background: var(--c); box-shadow: inset 0 0 0 1px rgba(255,255,255,.25); }
+.sw.sel { box-shadow: 0 0 0 2px var(--ink), 0 0 0 4px #fff; }
+.sw.custom { position: relative; overflow: hidden; background: conic-gradient(#ff3b3b, #f2ff3b, #3bff6a, #3bf2ff, #3b6bff, #ff3bc4, #ff3b3b); }
+.sw.custom input { position: absolute; inset: 0; opacity: 0; width: 100%; height: 100%; }
+.effects { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; }
+.fx { height: 36px; border-radius: 12px; font-size: 13px; font-weight: 600; color: var(--muted); background: rgba(255,255,255,.07); border: 1px solid transparent; }
+.fx.sel { color: var(--text); background: rgba(255,255,255,.16); border-color: var(--line); }
+.sheet-foot { display: flex; justify-content: space-between; align-items: center; gap: 8px; flex-wrap: wrap; }
+.ghost { font-size: 13px; color: var(--muted); padding: 6px 2px; }
+.ghost.danger { color: var(--danger); }
+.bt-btn { display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px; border-radius: 999px; font-size: 13px; font-weight: 600; background: rgba(90, 209, 122, .16); color: #b9f2c8; border: 1px solid rgba(90, 209, 122, .4); }
+.bt-btn.linked { background: var(--ok); color: #0a2a14; border-color: transparent; }
+.bt-btn svg { width: 14px; height: 14px; }
+
+.aimbar { border-radius: 24px; padding: 14px; display: flex; gap: 10px; align-items: center; background: var(--glass); border: 1px solid var(--line); -webkit-backdrop-filter: blur(26px); backdrop-filter: blur(26px); }
+.aimbar p { flex: 1; margin: 0; font-size: 14px; line-height: 1.35; }
+.btn { height: 48px; padding: 0 18px; border-radius: 16px; font-weight: 600; font-size: 15px; background: rgba(255,255,255,.1); border: 1px solid var(--line); }
+.btn.primary { background: var(--pill); color: var(--pill-ink); border-color: transparent; }
+
+.chips { display: flex; gap: 8px; align-items: center; }
+.chip-row { flex: 1; min-width: 0; display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; padding: 2px; }
+.chip-row::-webkit-scrollbar { display: none; }
+.chip { flex: none; height: 44px; padding: 0 18px; border-radius: 999px; font-size: 14px; font-weight: 600; background: var(--glass); border: 1px solid var(--line); -webkit-backdrop-filter: blur(18px); backdrop-filter: blur(18px); white-space: nowrap; }
+.chip.sel { background: var(--pill); color: var(--pill-ink); }
+.add { width: 48px; height: 48px; flex: none; border-radius: 50%; display: grid; place-items: center; background: var(--pill); color: var(--pill-ink); box-shadow: 0 6px 18px rgba(0,0,0,.4); }
+.add svg { width: 22px; height: 22px; }
+
+.scrim { position: fixed; inset: 0; z-index: 20; background: rgba(5,4,8,.6); display: flex; align-items: flex-end; justify-content: center; padding: 0 max(12px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 12px) max(12px, env(safe-area-inset-left, 0px)); }
+.panel { width: 100%; max-width: 440px; border-radius: 28px; padding: 20px; background: var(--glass-strong); border: 1px solid var(--line); -webkit-backdrop-filter: blur(26px); backdrop-filter: blur(26px); display: flex; flex-direction: column; gap: 14px; max-height: 88vh; overflow-y: auto; }
+.panel h2 { margin: 0; font: 600 18px/1.2 var(--font-body); }
+.panel p { margin: 0; font-size: 13.5px; line-height: 1.5; color: var(--muted); }
+.field label { display: block; font-size: 11.5px; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin-bottom: 6px; }
+.field input[type=text] { width: 100%; height: 46px; padding: 0 14px; border-radius: 14px; border: 1px solid var(--line); background: rgba(255,255,255,.06); color: var(--text); font: 500 16px var(--font-body); -webkit-user-select: text; user-select: text; }
+.field input[type=range] { width: 100%; accent-color: var(--accent); }
+.row-btn { display: flex; align-items: center; justify-content: space-between; gap: 12px; width: 100%; min-height: 50px; padding: 0 16px; border-radius: 16px; background: rgba(255,255,255,.07); border: 1px solid var(--line); font-size: 15px; font-weight: 500; text-align: left; }
+.row-btn small { color: var(--muted); font-size: 12.5px; font-weight: 400; }
+.row-btn.danger { color: var(--danger); }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.note { font-size: 12.5px; color: var(--muted); line-height: 1.5; padding: 10px 12px; border-radius: 12px; background: rgba(255,255,255,.05); border: 1px solid var(--line); -webkit-user-select: text; user-select: text; }
+.log { font: 11.5px/1.45 ui-monospace, Menlo, monospace; color: var(--muted); white-space: pre-wrap; max-height: 140px; overflow-y: auto; padding: 10px 12px; border-radius: 12px; background: rgba(0,0,0,.35); -webkit-user-select: text; user-select: text; }
+
+.start { position: fixed; inset: 0; z-index: 30; display: flex; flex-direction: column; justify-content: flex-end; gap: 18px; padding: calc(env(safe-area-inset-top, 0px) + 24px) max(24px, env(safe-area-inset-right, 0px)) calc(env(safe-area-inset-bottom, 0px) + 28px) max(24px, env(safe-area-inset-left, 0px)); background: radial-gradient(90% 55% at 70% 20%, rgba(139, 61, 255, .45), transparent 70%), radial-gradient(80% 50% at 15% 45%, rgba(255, 150, 60, .38), transparent 70%), var(--ink); }
+.start h1 { margin: 0; font: 700 clamp(38px, 12vw, 64px)/1 var(--font-display); letter-spacing: -.01em; }
+.start p { margin: 0; color: var(--muted); font-size: 15px; line-height: 1.5; max-width: 34ch; }
+.start .btn { height: 56px; font-size: 16px; }
+.start .err { color: #ffd0a0; font-size: 14px; line-height: 1.5; }
+.toast { position: fixed; z-index: 40; left: 50%; top: calc(env(safe-area-inset-top, 0px) + 110px); transform: translateX(-50%); max-width: calc(100% - 32px); padding: 10px 16px; border-radius: 14px; background: var(--glass-strong); border: 1px solid var(--line); font-size: 13.5px; text-align: center; opacity: 0; transition: opacity .25s; pointer-events: none; }
+.toast.show { opacity: 1; }
+@media (prefers-reduced-motion: reduce) { .spell.go { animation-duration: .01s; } }
+</style>
+</head>
+<body>
+<video id="cam" playsinline muted autoplay></video>
+<div id="shade"></div>
+<div id="pins"><div class="ring" id="ring"></div><div class="ring-thumb" id="ringThumb"></div></div>
+<div class="reticle" id="reticle" hidden></div>
+
+<header class="topbar">
+  <button class="icon-btn" id="wand" aria-label="Lumos: all lights on or off">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20 15 9"/><path d="M14 4v2M18 6l-1.4 1.4M20 10h-2M18 14l-1.4-1.4M10 6l1.4 1.4"/></svg>
+  </button>
+  <div class="room-title" id="roomTitle">Living room</div>
+  <button class="icon-btn" id="mic" aria-label="Voice: say Lumos or Nox">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg>
+  </button>
+  <button class="icon-btn" id="gear" aria-label="Settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>
+  </button>
+</header>
+<div class="hint" id="hint"><span id="hintText">Starting</span><button id="hintBtn" hidden>Align</button></div>
+<div class="spell" id="spell">Lumos</div>
+<div class="toast" id="toast"></div>
+
+<div class="bottom">
+  <div class="aimbar" id="aimbar" hidden>
+    <p id="aimText">Aim the circle at the light, then tap Pin.</p>
+    <button class="btn" id="aimCancel">Cancel</button>
+    <button class="btn primary" id="aimGo">Pin</button>
+  </div>
+  <section class="sheet" id="sheet">
+    <div class="sheet-head">
+      <div class="title-wrap">
+        <input id="lightName" class="name" type="text" value="All lights" readonly maxlength="28" aria-label="Light name">
+        <div class="status" id="lightStatus"></div>
+      </div>
+      <button class="power" id="power" aria-label="Power">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v8"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/></svg>
+      </button>
+    </div>
+    <div class="slider" id="briSlider" role="slider" aria-label="Brightness">
+      <div class="fill"></div>
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>
+      <span class="val" id="briVal">60%</span>
+    </div>
+    <div class="slider warm" id="warmSlider" role="slider" aria-label="White temperature">
+      <div class="knob" id="warmKnob"></div>
+      <svg class="ico" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M14 14.8V5a2 2 0 1 0-4 0v9.8a4 4 0 1 0 4 0z"/></svg>
+      <span class="val" id="warmVal">2700 K</span>
+    </div>
+    <div class="swatches" id="swatches"></div>
+    <div class="effects" id="effects">
+      <button class="fx" data-fx="steady">Steady</button>
+      <button class="fx" data-fx="breathe">Breathe</button>
+      <button class="fx" data-fx="candle">Candle</button>
+      <button class="fx" data-fx="rainbow">Rainbow</button>
+    </div>
+    <div class="sheet-foot" id="sheetFoot">
+      <button class="bt-btn" id="btBtn"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg><span id="btLabel">Connect strip</span></button>
+      <button class="ghost" id="repinBtn">Re-pin</button>
+      <button class="ghost danger" id="removeBtn">Remove</button>
+    </div>
+  </section>
+  <div class="chips" id="chips">
+    <div class="chip-row" id="chipRow"></div>
+    <button class="add" id="addBtn" aria-label="Pin a new light"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+  </div>
+</div>
+
+<div class="scrim" id="settings" hidden>
+  <div class="panel" role="dialog" aria-label="Settings">
+    <h2>Room</h2>
+    <div class="field"><label for="roomName">Room name</label><input type="text" id="roomName" maxlength="32"></div>
+    <button class="row-btn" id="alignBtn">Re-align pins <small>aim at any pinned light</small></button>
+    <div class="field"><label for="fov">Pin spread <span id="fovVal"></span></label><input type="range" id="fov" min="45" max="95" step="1"></div>
+    <p>If pins drift away from the lamps as you turn, move this slider until they stay put.</p>
+    <div class="note" id="btNote"></div>
+    <div class="field"><label>Bluetooth log</label><div class="log" id="log">No Bluetooth activity yet.</div></div>
+    <button class="row-btn danger" id="resetBtn">Remove all pins</button>
+    <div class="btn-row" id="resetConfirm" hidden><button class="btn" id="resetNo">Keep them</button><button class="btn primary" id="resetYes">Yes, remove</button></div>
+    <button class="btn primary" id="settingsDone">Done</button>
+  </div>
+</div>
+
+<div class="start" id="start">
+  <h1>Halo Room</h1>
+  <p>Point your phone at a lamp, pin it once, and control it from the camera view. Stand roughly where you'll normally use it.</p>
+  <div class="err" id="startErr" hidden></div>
+  <button class="btn primary" id="startBtn">Start camera</button>
+</div>
+
+<script>
+(() => {
+  const KEY = "halo-ar-v1";
+  const $ = id => document.getElementById(id);
+  const SWATCHES = ["#ff3b30", "#ff8a1f", "#ff2d8d", "#8b3dff", "#2f6bff", "#18c8d8", "#2fd16a"];
+  const D2R = Math.PI / 180;
+
+  // ---------------- state ----------------
+  const fresh = () => ({ roomName: "Living room", fov: 68, yaw: 0, scene: null, lights: [] });
+  let state;
+  try { state = JSON.parse(localStorage.getItem(KEY)) || fresh(); } catch (e) { state = fresh(); }
+  if (!Array.isArray(state.lights)) state = fresh();
+  state.yaw = 0; // yaw reference resets every session; aligned again below
+  let aligned = state.lights.length === 0;
+  let saveT;
+  const save = () => { clearTimeout(saveT); saveT = setTimeout(() => { try { localStorage.setItem(KEY, JSON.stringify(state)); } catch (e) {} }, 250); };
+
+  let selected = null, mode = "idle"; // idle | aim | align | repin
+  let repinId = null;
+  const live = {};
+
+  // ---------------- colors ----------------
+  function kelvinRGB(k) {
+    const t = k / 100; let r, g, b;
+    if (t <= 66) { r = 255; g = 99.4708 * Math.log(t) - 161.1196; b = t <= 19 ? 0 : 138.5177 * Math.log(t - 10) - 305.0448; }
+    else { r = 329.6987 * Math.pow(t - 60, -0.1332); g = 288.1222 * Math.pow(t - 60, -0.0755); b = 255; }
+    const c = v => Math.max(0, Math.min(255, Math.round(v)));
+    return [c(r), c(g), c(b)];
+  }
+  function hsvRGB(h, s, v) {
+    h = ((h % 360) + 360) % 360 / 60; const i = Math.floor(h), f = h - i;
+    const p = v * (1 - s), q = v * (1 - s * f), t = v * (1 - s * (1 - f));
+    return [[v,t,p],[q,v,p],[p,v,t],[p,q,v],[t,p,v],[v,p,q]][i].map(x => Math.round(x * 255));
+  }
+  function hexToHS(hex) {
+    const n = parseInt(hex.slice(1), 16), r = (n >> 16 & 255) / 255, g = (n >> 8 & 255) / 255, b = (n & 255) / 255;
+    const mx = Math.max(r, g, b), mn = Math.min(r, g, b), d = mx - mn; let h = 0;
+    if (d) { h = mx === r ? ((g - b) / d) % 6 : mx === g ? (b - r) / d + 2 : (r - g) / d + 4; h *= 60; }
+    return { hue: (h + 360) % 360, sat: mx ? d / mx : 0 };
+  }
+  const rgbStr = (c, a = 1) => `rgba(${c[0]},${c[1]},${c[2]},${a})`;
+  let tNow = 0;
+  const baseColor = (l, i) => l.effect === "rainbow" ? hsvRGB(tNow * 0.045 + i * 70, 1, 1) : l.mode === "white" ? kelvinRGB(l.kelvin) : hsvRGB(l.hue, l.sat, 1);
+  const effFactor = (l, i) => l.effect === "breathe" ? 0.25 + 0.75 * (0.5 + 0.5 * Math.sin(tNow / 700 + i))
+    : l.effect === "candle" ? 0.7 + 0.15 * Math.sin(tNow / 90 + i * 3) * Math.sin(tNow / 237 + i) + 0.12 * Math.sin(tNow / 41 + i * 7) : 1;
+
+  // ---------------- orientation ----------------
+  let R = null; // device rotation matrix rows
+  let gotMotion = false;
+  function onOrient(e) {
+    if (e.alpha == null) return;
+    gotMotion = true;
+    const a = e.alpha * D2R, b = e.beta * D2R, g = e.gamma * D2R;
+    const cA = Math.cos(a), sA = Math.sin(a), cB = Math.cos(b), sB = Math.sin(b), cG = Math.cos(g), sG = Math.sin(g);
+    const M = [
+      [cA * cG - sA * sB * sG, -sA * cB, cA * sG + sA * sB * cG],
+      [sA * cG + cA * sB * sG, cA * cB, sA * sG - cA * sB * cG],
+      [-cB * sG, sB, cB * cG],
+    ];
+    if (!R) R = M; else for (let r = 0; r < 3; r++) for (let c = 0; c < 3; c++) R[r][c] += (M[r][c] - R[r][c]) * 0.45;
+  }
+  const col = (k) => [R[0][k], R[1][k], R[2][k]];
+  const norm = v => { const m = Math.hypot(v[0], v[1], v[2]) || 1; return [v[0] / m, v[1] / m, v[2] / m]; };
+  const dot = (a, b) => a[0] * b[0] + a[1] * b[1] + a[2] * b[2];
+  const rotZ = (v, ang) => [v[0] * Math.cos(ang) - v[1] * Math.sin(ang), v[0] * Math.sin(ang) + v[1] * Math.cos(ang), v[2]];
+  function camAxes() {
+    if (!R) return { r: [1, 0, 0], u: [0, 0, 1], f: [0, 1, 0] };
+    return { r: norm(col(0)), u: norm(col(1)), f: norm(col(2).map(x => -x)) };
+  }
+  // aim point on screen (reticle) sits a bit above center
+  const aimY = () => window.innerHeight * 0.42;
+  function focal() {
+    const W = window.innerWidth, H = window.innerHeight, v = $("cam");
+    // vertical field of view for the long side of the camera image, adjusted for cover cropping
+    const vw = v.videoWidth || 1080, vh = v.videoHeight || 1920;
+    const longSide = Math.max(vw, vh), shortSide = Math.min(vw, vh);
+    const portrait = H >= W;
+    const imgH = portrait ? longSide : shortSide, imgW = portrait ? shortSide : longSide;
+    const scale = Math.max(W / imgW, H / imgH);
+    const fullH = imgH * scale;
+    return (fullH / 2) / Math.tan(state.fov * D2R / 2);
+  }
+  function project(dir) {
+    const { r, u, f } = camAxes();
+    const d = rotZ(dir, state.yaw);
+    const z = dot(d, f); const x = dot(d, r), y = dot(d, u);
+    const F = focal();
+    return { x: window.innerWidth / 2 + (x / Math.max(z, 1e-3)) * F, y: aimY() - (y / Math.max(z, 1e-3)) * F, z, ex: x, ey: y };
+  }
+  const yawOf = v => Math.atan2(v[1], v[0]);
+
+  // ---------------- camera ----------------
+  async function start() {
+    const err = $("startErr"); err.hidden = true;
+    const msgs = [];
+    try {
+      if (typeof DeviceOrientationEvent !== "undefined" && typeof DeviceOrientationEvent.requestPermission === "function") {
+        const p = await DeviceOrientationEvent.requestPermission();
+        if (p !== "granted") msgs.push("Motion access was declined, so pins won't follow the phone. Allow Motion & Orientation for this site and reload.");
+      }
+    } catch (e) { msgs.push("Motion access needs a tap to ask. Reload and tap Start again."); }
+    window.addEventListener("deviceorientation", onOrient);
+    try {
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) throw new Error("nocam");
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: "environment" }, width: { ideal: 1920 }, height: { ideal: 1080 } }, audio: false });
+      const v = $("cam"); v.srcObject = stream; await v.play().catch(() => {});
+    } catch (e) {
+      msgs.push(e.message === "nocam" ? "This browser doesn't give web pages the camera. Open the link in Safari for the camera view." : "Camera access was blocked. Allow Camera for this site in your browser settings, then reload.");
+    }
+    if (msgs.length) { err.textContent = msgs.join(" "); err.hidden = false; $("startBtn").textContent = "Continue anyway"; $("startBtn").onclick = () => { $("start").hidden = true; }; }
+    else $("start").hidden = true;
+    setTimeout(() => { if (!gotMotion) toast("No motion sensor found. Pins will stay fixed on screen."); }, 2500);
+    setHint();
+  }
+  $("startBtn").onclick = start;
+
+  // ---------------- pins ----------------
+  const pinsEl = $("pins"), ring = $("ring"), ringThumb = $("ringThumb");
+  const pinEls = {};
+  const btIcon = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="m7 7 10 10-5 5V2l5 5L7 17"/></svg>';
+  function syncPins() {
+    const ids = new Set(state.lights.map(l => l.id));
+    Object.keys(pinEls).forEach(id => { if (!ids.has(id)) { pinEls[id].el.remove(); pinEls[id].edge.remove(); delete pinEls[id]; } });
+    state.lights.forEach(l => {
+      if (!pinEls[l.id]) {
+        const el = document.createElement("div"); el.className = "pin";
+        el.innerHTML = '<div class="halo"></div><div class="label"></div><button class="dot"></button><div class="bt" hidden>' + btIcon + '</div>';
+        el.querySelector(".dot").addEventListener("click", e => { e.stopPropagation(); if (mode === "align") return alignTo(l.id); if (mode !== "idle") return; select(selected === l.id ? null : l.id); });
+        const edge = document.createElement("div"); edge.className = "edge"; edge.hidden = true;
+        pinsEl.insertBefore(edge, ring); pinsEl.insertBefore(el, ring);
+        pinEls[l.id] = { el, edge, sx: null, sy: null };
+      }
+      const P = pinEls[l.id];
+      P.el.querySelector(".label").textContent = l.name;
+      P.el.querySelector(".dot").setAttribute("aria-label", l.name);
+      P.el.querySelector(".bt").hidden = !(conns[l.id] && conns[l.id].ready);
+      P.el.classList.toggle("off", !l.on);
+      P.el.classList.toggle("sel", selected === l.id);
+    });
+  }
+
+  function frame(ts) {
+    tNow = ts;
+    const W = window.innerWidth, H = window.innerHeight;
+    let anyOn = 0;
+    let best = null, bestD = 1e9;
+    state.lights.forEach((l, i) => {
+      const P = pinEls[l.id]; if (!P) return;
+      const tgt = l.on ? l.bri / 100 : 0;
+      const L = live[l.id] || (live[l.id] = { i: tgt });
+      L.i += (tgt - L.i) * 0.15;
+      const inten = L.i * effFactor(l, i);
+      const c = baseColor(l, i); L.col = c; L.out = inten;
+      anyOn += L.i;
+      P.el.style.setProperty("--c", rgbStr(c));
+      P.el.querySelector(".halo").style.opacity = (0.55 * inten).toFixed(3);
+      const p = project(l.dir);
+      const visible = p.z > 0.15 && p.x > -60 && p.x < W + 60 && p.y > -60 && p.y < H + 60;
+      if (visible) {
+        P.sx = P.sx == null ? p.x : P.sx + (p.x - P.sx) * 0.5;
+        P.sy = P.sy == null ? p.y : P.sy + (p.y - P.sy) * 0.5;
+        P.el.hidden = false; P.edge.hidden = true;
+        P.el.style.transform = `translate(${P.sx}px, ${P.sy}px)`;
+        const d = Math.hypot(P.sx - W / 2, P.sy - aimY());
+        if (d < bestD) { bestD = d; best = l.id; }
+      } else {
+        P.sx = P.sy = null; P.el.hidden = true;
+        // arrow at the edge pointing to the light
+        let ang = Math.atan2(-p.ey, p.ex); if (p.z <= 0.15 && Math.abs(p.ex) < 0.05) ang = Math.PI / 2;
+        const rx = W / 2 - 28, ry = H / 2 - 120;
+        const k = Math.min(rx / Math.abs(Math.cos(ang) || 1e-6), ry / Math.abs(Math.sin(ang) || 1e-6));
+        P.edge.hidden = false; P.edge.style.setProperty("--c", rgbStr(c));
+        P.edge.style.left = (W / 2 + Math.cos(ang) * k) + "px"; P.edge.style.top = (H / 2 + Math.sin(ang) * k) + "px";
+      }
+    });
+    Object.entries(pinEls).forEach(([id, P]) => P.el.classList.toggle("aimed", id === best && bestD < 70 && mode === "idle"));
+    $("shade").style.background = `rgba(5,4,10,${(0.25 - 0.2 * Math.min(1, anyOn / Math.max(1, state.lights.length) * 2)).toFixed(3)})`;
+    // ring
+    const sel = selected && pinEls[selected];
+    const showRing = !!sel && !sel.el.hidden && mode === "idle";
+    ring.classList.toggle("show", showRing);
+    if (sel && sel.sx != null) {
+      ring.style.transform = `translate(${sel.sx}px, ${sel.sy}px)`;
+      const l = byId(selected);
+      const showT = showRing && l.mode === "color" && l.effect !== "rainbow";
+      ringThumb.classList.toggle("show", showT);
+      const a = (l.hue - 90) * D2R;
+      ringThumb.style.transform = `translate(${sel.sx + 65 * Math.cos(a)}px, ${sel.sy + 65 * Math.sin(a)}px)`;
+      ringThumb.style.setProperty("--c", rgbStr(baseColor(l, 0)));
+    } else ringThumb.classList.remove("show");
+    pumpBluetooth();
+    requestAnimationFrame(frame);
+  }
+
+  function ringHue(e) {
+    const l = byId(selected); const P = pinEls[selected]; if (!l || !P) return;
+    l.hue = ((Math.atan2(e.clientY - P.sy, e.clientX - P.sx) / D2R + 90) + 360) % 360;
+    l.sat = 0.95; l.mode = "color"; l.on = true; if (l.effect === "rainbow") l.effect = "steady";
+    state.scene = null; syncSheet(); save();
+  }
+  ring.addEventListener("pointerdown", e => { e.stopPropagation(); ring.setPointerCapture(e.pointerId); ringHue(e); ring.onpointermove = ringHue; });
+  ring.addEventListener("pointerup", () => { ring.onpointermove = null; });
+  document.addEventListener("click", e => { if (e.target === $("cam") || e.target === pinsEl || e.target === $("shade")) { if (selected && mode === "idle") select(null); } });
+
+  const byId = id => state.lights.find(l => l.id === id);
+
+  // ---------------- aim / pin / align ----------------
+  function enterAim(kind, id) {
+    mode = kind; repinId = id || null; select(null, true);
+    $("reticle").hidden = kind === "align";
+    $("aimbar").hidden = kind === "align"; $("sheet").hidden = true; $("chips").hidden = true;
+    $("aimText").textContent = kind === "repin" ? "Aim the circle at " + byId(id).name + ", then tap Pin." : "Aim the circle at the light, then tap Pin.";
+    setHint();
+  }
+  function exitAim() {
+    mode = "idle"; repinId = null; $("reticle").hidden = true; $("aimbar").hidden = true; $("sheet").hidden = false; $("chips").hidden = false; setHint();
+  }
+  $("aimCancel").onclick = exitAim;
+  $("aimGo").onclick = () => {
+    const d = aimDirExact();
+    if (mode === "repin") { const l = byId(repinId); l.dir = d; const id = repinId; exitAim(); select(id); }
+    else {
+      const l = { id: "l" + Date.now().toString(36), name: "Light " + (state.lights.length + 1), dir: d, on: true, bri: 70, mode: "white", hue: 30, sat: 1, kelvin: 2700, effect: "steady" };
+      state.lights.push(l); aligned = true; exitAim(); syncPins(); select(l.id);
+      toast("Pinned. Tap the name to rename it.");
+    }
+    save();
+  };
+  // the reticle sits on the projection center, so it points straight along the camera axis
+  function aimDirExact() { return rotZ(camAxes().f, -state.yaw); }
+  function alignTo(id) {
+    const l = byId(id); const { f } = camAxes();
+    state.yaw = yawOf(f) - yawOf(l.dir);
+    aligned = true; exitAim(); toast("Aligned on " + l.name);
+  }
+  $("alignBtn").onclick = () => { $("settings").hidden = true; startAlign(); };
+  function startAlign() {
+    if (!state.lights.length) return toast("Pin a light first.");
+    mode = "align"; $("reticle").hidden = false; select(null, true); setHint();
+  }
+  $("hintBtn").onclick = () => {
+    if (mode === "align") {
+      // align on whichever pin the user is aiming at, or the first light
+      const id = alignTarget || state.lights[0].id;
+      alignTo(id);
+    } else startAlign();
+  };
+  let alignTarget = null;
+
+  function setHint() {
+    const h = $("hint"), t = $("hintText"), b = $("hintBtn");
+    b.hidden = true; h.classList.remove("warn");
+    if (mode === "aim" || mode === "repin") t.textContent = "Hold steady on the lamp";
+    else if (mode === "align") {
+      alignTarget = state.lights[0] && state.lights[0].id;
+      t.textContent = "Aim the circle at " + (state.lights[0] ? state.lights[0].name : "a light");
+      b.textContent = "Align"; b.hidden = false; h.classList.add("warn");
+    } else if (!aligned) {
+      t.textContent = "Pins need aligning after a restart"; b.textContent = "Align"; b.hidden = false; h.classList.add("warn");
+    } else if (!state.lights.length) t.textContent = "Tap + and aim at your first lamp";
+    else if (selected) t.textContent = "Spin the ring to change color";
+    else t.textContent = "Tap a light to control it";
+  }
+
+  // ---------------- sheet ----------------
+  const nameEl = $("lightName"), statusEl = $("lightStatus"), powerEl = $("power"), bri = $("briSlider"), warm = $("warmSlider");
+  const targets = () => selected ? [byId(selected)] : state.lights;
+  function select(id, quiet) { selected = id; syncPins(); syncSheet(); if (!quiet) setHint(); }
+  function syncSheet() {
+    const l = selected && byId(selected), ls = targets();
+    if (l) {
+      nameEl.readOnly = false; if (document.activeElement !== nameEl) nameEl.value = l.name;
+      const c = l.effect === "rainbow" ? "Rainbow" : l.mode === "white" ? l.kelvin + " K" : "Color";
+      const bt = conns[l.id] ? (conns[l.id].ready ? " · Strip linked" : " · Reconnecting") : "";
+      statusEl.textContent = (l.on ? `On · ${l.bri}% · ${c}` : "Off") + bt;
+    } else {
+      nameEl.readOnly = true; nameEl.value = "All lights";
+      statusEl.textContent = ls.length ? `${ls.filter(x => x.on).length} of ${ls.length} on` : "No lights pinned yet";
+    }
+    powerEl.classList.toggle("on", ls.some(x => x.on));
+    const avg = ls.length ? Math.round(ls.reduce((a, x) => a + x.bri, 0) / ls.length) : 0;
+    bri.querySelector(".fill").style.width = Math.max(8, avg) + "%"; $("briVal").textContent = avg + "%";
+    const ref = l || ls.find(x => x.mode === "white") || ls[0]; const k = ref ? ref.kelvin : 2700;
+    $("warmKnob").style.left = (6 + 88 * (k - 2000) / 4500) + "%"; $("warmVal").textContent = k + " K";
+    warm.classList.toggle("inactive", !!l && (l.mode !== "white" || l.effect === "rainbow"));
+    document.querySelectorAll(".sw[data-c]").forEach(sw => { const hv = hexToHS(sw.dataset.c); sw.classList.toggle("sel", !!l && l.mode === "color" && l.effect !== "rainbow" && Math.abs(hv.hue - l.hue) < 2); });
+    document.querySelectorAll(".fx").forEach(b => b.classList.toggle("sel", ls.length > 0 && ls.every(x => x.effect === b.dataset.fx)));
+    $("sheetFoot").hidden = !l;
+    if (l) { const c = conns[l.id]; $("btBtn").classList.toggle("linked", !!(c && c.ready)); $("btLabel").textContent = c && c.ready ? "Strip linked" : "Connect strip"; }
+    document.querySelectorAll(".chip").forEach(c => c.classList.toggle("sel", c.dataset.scene === state.scene));
+  }
+  nameEl.addEventListener("input", () => { const l = selected && byId(selected); if (l) { l.name = nameEl.value.trim() || "Light"; syncPins(); save(); } });
+  nameEl.addEventListener("keydown", e => { if (e.key === "Enter") nameEl.blur(); });
+  powerEl.onclick = () => { const ls = targets(), on = ls.some(x => x.on); ls.forEach(x => x.on = !on); changed(); };
+  function changed() { syncPins(); syncSheet(); save(); }
+  function bindSlider(el, fn) {
+    const h = e => { const r = el.getBoundingClientRect(); fn(Math.max(0, Math.min(1, (e.clientX - r.left) / r.width))); };
+    el.addEventListener("pointerdown", e => { el.setPointerCapture(e.pointerId); h(e); el.onpointermove = h; });
+    el.addEventListener("pointerup", () => { el.onpointermove = null; save(); });
+  }
+  bindSlider(bri, f => { const v = Math.max(1, Math.round(f * 100)); targets().forEach(x => { x.bri = v; x.on = true; }); state.scene = null; changed(); });
+  bindSlider(warm, f => { const k = Math.round((2000 + f * 4500) / 50) * 50; targets().forEach(x => { x.kelvin = k; x.mode = "white"; x.on = true; if (x.effect === "rainbow") x.effect = "steady"; }); state.scene = null; changed(); });
+  SWATCHES.forEach(c => { const b = document.createElement("button"); b.className = "sw"; b.dataset.c = c; b.style.setProperty("--c", c); b.setAttribute("aria-label", "Color"); b.onclick = () => applyColor(c); $("swatches").appendChild(b); });
+  const cu = document.createElement("span"); cu.className = "sw custom"; cu.innerHTML = '<input type="color" id="customColor" value="#ff8a1f" aria-label="Any color">'; $("swatches").appendChild(cu);
+  const ww = document.createElement("button"); ww.className = "sw"; ww.style.setProperty("--c", "#fff1dc"); ww.setAttribute("aria-label", "Warm white");
+  ww.onclick = () => { targets().forEach(x => { x.mode = "white"; x.kelvin = 2700; x.on = true; if (x.effect === "rainbow") x.effect = "steady"; }); state.scene = null; changed(); };
+  $("swatches").appendChild(ww);
+  $("customColor").addEventListener("input", e => applyColor(e.target.value));
+  function applyColor(hex) { const { hue, sat } = hexToHS(hex); targets().forEach(x => { x.mode = "color"; x.hue = hue; x.sat = Math.max(0.35, sat); x.on = true; if (x.effect === "rainbow") x.effect = "steady"; }); state.scene = null; changed(); }
+  document.querySelectorAll(".fx").forEach(b => b.onclick = () => { targets().forEach(x => { x.effect = b.dataset.fx; x.on = true; }); state.scene = null; changed(); });
+  $("repinBtn").onclick = () => enterAim("repin", selected);
+  let rmArmed = false;
+  $("removeBtn").onclick = () => {
+    const b = $("removeBtn");
+    if (!rmArmed) { rmArmed = true; b.textContent = "Tap again to remove"; setTimeout(() => { rmArmed = false; b.textContent = "Remove"; }, 2500); return; }
+    rmArmed = false; b.textContent = "Remove";
+    disconnect(selected); state.lights = state.lights.filter(l => l.id !== selected); select(null); save();
+  };
+  $("addBtn").onclick = () => enterAim("aim");
+
+  // ---------------- scenes ----------------
+  const SCENES = [["relax", "Relax"], ["focus", "Focus"], ["movie", "Movie"], ["sunset", "Sunset"], ["party", "Party"], ["sleep", "Sleep"]];
+  function applyScene(id) {
+    state.lights.forEach((l, i) => {
+      l.effect = "steady";
+      if (id === "focus") Object.assign(l, { on: true, mode: "white", kelvin: 5000, bri: 90 });
+      if (id === "relax") Object.assign(l, { on: true, mode: "white", kelvin: 2400, bri: 45 });
+      if (id === "movie") Object.assign(l, i === 0 ? { on: true, mode: "color", hue: 232, sat: 0.9, bri: 40 } : { on: false });
+      if (id === "sunset") Object.assign(l, { on: true, mode: "color", hue: [14, 330, 28, 350][i % 4], sat: 0.9, bri: 65 });
+      if (id === "party") Object.assign(l, { on: true, effect: "rainbow", bri: 90 });
+      if (id === "sleep") Object.assign(l, i === 0 ? { on: true, mode: "color", hue: 18, sat: 1, bri: 8, effect: "breathe" } : { on: false });
+    });
+    state.scene = id; syncPins(); syncSheet(); save();
+  }
+  SCENES.forEach(([id, n]) => { const b = document.createElement("button"); b.className = "chip"; b.dataset.scene = id; b.textContent = n; b.onclick = () => applyScene(id); $("chipRow").appendChild(b); });
+
+  // ---------------- spells ----------------
+  function cast(on) {
+    const s = $("spell"); s.textContent = on ? "Lumos" : "Nox"; s.classList.toggle("nox", !on);
+    s.classList.remove("go"); void s.offsetWidth; s.classList.add("go");
+    if (on) state.lights.forEach(l => Object.assign(l, { on: true, mode: "white", kelvin: 2700, bri: Math.max(l.bri, 70), effect: "steady" }));
+    else state.lights.forEach(l => l.on = false);
+    state.scene = null; syncPins(); syncSheet(); save();
+  }
+  $("wand").onclick = () => cast(!state.lights.some(l => l.on));
+
+  // ---------------- voice ----------------
+  const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let rec = null, listening = false;
+  if (!SR) $("mic").hidden = true;
+  else {
+    $("mic").onclick = () => {
+      if (listening) { listening = false; try { rec.stop(); } catch (e) {} $("mic").classList.remove("live"); return; }
+      rec = new SR(); rec.lang = "en-US"; rec.continuous = true; rec.interimResults = true;
+      let lastFire = 0;
+      rec.onresult = ev => {
+        const txt = Array.from(ev.results).slice(ev.resultIndex).map(r => r[0].transcript).join(" ").toLowerCase();
+        if (Date.now() - lastFire < 1500) return;
+        const hit = (w) => txt.includes(w);
+        if (hit("lumos") || hit("lights on") || hit("loom")) { cast(true); lastFire = Date.now(); }
+        else if (hit("nox") || hit("knocks") || hit("lights off")) { cast(false); lastFire = Date.now(); }
+        else for (const [id, n] of SCENES) if (hit(n.toLowerCase())) { applyScene(id); lastFire = Date.now(); break; }
+      };
+      rec.onend = () => { if (listening) { try { rec.start(); } catch (e) {} } };
+      rec.onerror = e => { if (e.error === "not-allowed") { listening = false; $("mic").classList.remove("live"); toast("Microphone access was blocked."); } };
+      try { rec.start(); listening = true; $("mic").classList.add("live"); toast("Listening. Say Lumos or Nox."); } catch (e) { toast("Voice isn't available here."); }
+    };
+  }
+
+  // ---------------- Bluetooth (ELK-BLEDOM style controllers, used by duoCo StripX) ----------------
+  const conns = {}; // lightId -> { device, ch, proto, ready, last: {}, busy }
+  const hasBT = !!(navigator.bluetooth && navigator.bluetooth.requestDevice);
+  const logEl = $("log"); let logLines = [];
+  function log(s) { logLines.push(new Date().toLocaleTimeString() + "  " + s); logLines = logLines.slice(-40); logEl.textContent = logLines.join("\n"); logEl.scrollTop = 1e9; }
+  $("btNote").textContent = hasBT
+    ? "Bluetooth is available in this browser. Open a light, tap Connect strip, and pick your controller. Close the StripX app first: the strip accepts one phone at a time."
+    : "This browser can't reach Bluetooth, so lights are simulated here. On iPhone, open this same link in the free Bluefy browser to control your strip.";
+  const hex = s => new Uint8Array(s.match(/../g).map(h => parseInt(h, 16)));
+  const PROTOS = [
+    { name: "elk", service: 0xfff0, char: 0xfff3 },
+    { name: "elk", service: 0xffe0, char: 0xffe1 },
+    { name: "triones", service: 0xffd5, char: 0xffd9 },
+  ];
+  async function connect(id, all) {
+    if (!hasBT) { $("settings").hidden = false; return; }
+    try {
+      const opts = all ? { acceptAllDevices: true, optionalServices: [0xfff0, 0xffe0, 0xffd5] }
+        : { filters: [{ namePrefix: "ELK" }, { namePrefix: "MELK" }, { namePrefix: "duoCo" }, { namePrefix: "LEDBLE" }, { namePrefix: "Triones" }, { namePrefix: "QHM" }, { namePrefix: "SP" }, { services: [0xfff0] }], optionalServices: [0xfff0, 0xffe0, 0xffd5] };
+      log("Asking for a device" + (all ? " (all devices)" : ""));
+      const device = await navigator.bluetooth.requestDevice(opts);
+      log("Picked " + (device.name || "unnamed device"));
+      const c = conns[id] = { device, ready: false, last: {} };
+      device.addEventListener("gattserverdisconnected", () => { c.ready = false; log((device.name || "Strip") + " disconnected"); syncPins(); syncSheet(); });
+      await openGatt(c);
+      syncPins(); syncSheet();
+    } catch (e) {
+      log("Connect failed: " + e.message);
+      toast(/cancel/i.test(e.message) ? "Strip not in the list? Press and hold Connect strip to show every device." : "Couldn't connect. The log in settings shows why.");
+    }
+  }
+  async function openGatt(c) {
+    const server = await c.device.gatt.connect();
+    log("Connected to GATT");
+    for (const p of PROTOS) {
+      try {
+        const svc = await server.getPrimaryService(p.service);
+        c.ch = await svc.getCharacteristic(p.char); c.proto = p.name;
+        log("Using service " + p.service.toString(16) + " / " + p.char.toString(16) + " (" + p.name + ")");
+        break;
+      } catch (e) {}
+    }
+    if (!c.ch) { log("No known light service on this device"); throw new Error("This device doesn't look like a light controller"); }
+    if (c.proto === "elk") {
+      // unlock packets some duoCo (MELK) controllers wait for
+      await write(c, hex("7e0783")); await write(c, hex("7e0404"));
+    }
+    c.ready = true; c.last = {};
+    toast("Strip linked");
+  }
+  async function write(c, bytes) {
+    if (c.ch.writeValueWithoutResponse) return c.ch.writeValueWithoutResponse(bytes);
+    return c.ch.writeValue(bytes);
+  }
+  function disconnect(id) { const c = conns[id]; if (c) { try { c.device.gatt.disconnect(); } catch (e) {} delete conns[id]; } }
+  const btBtn = $("btBtn"); let pressT = null, longFired = false;
+  btBtn.addEventListener("pointerdown", () => { longFired = false; pressT = setTimeout(() => { longFired = true; connect(selected, true); }, 650); });
+  btBtn.addEventListener("pointerup", () => clearTimeout(pressT));
+  btBtn.addEventListener("pointerleave", () => clearTimeout(pressT));
+  btBtn.addEventListener("click", () => {
+    if (longFired) return;
+    const c = conns[selected];
+    if (c && c.ready) { disconnect(selected); syncPins(); syncSheet(); toast("Strip unlinked"); return; }
+    if (c && !c.ready) { openGatt(c).then(() => { syncPins(); syncSheet(); }).catch(e => { log("Reconnect failed: " + e.message); connect(selected); }); return; }
+    connect(selected);
+  });
+
+  // send current state, only what changed, at most every 80 ms per strip
+  function pumpBluetooth() {
+    const now = performance.now();
+    state.lights.forEach((l, i) => {
+      const c = conns[l.id]; if (!c || !c.ready || c.busy || now - (c.t || 0) < 80) return;
+      const L = live[l.id] || {}; const col = L.col || baseColor(l, i);
+      const on = l.on;
+      const level = Math.max(1, Math.min(100, Math.round(l.bri * effFactor(l, i))));
+      const cmds = [];
+      if (c.last.on !== on) { cmds.push(["on", on, c.proto === "triones" ? hex(on ? "cc2333" : "cc2433") : hex(on ? "7e0004f00001ff00ef" : "7e0004000000ff00ef")]); }
+      if (on) {
+        const key = col.join(",");
+        if (c.proto === "triones") {
+          const k2 = key + "@" + level; const s = level / 100;
+          if (c.last.col !== k2) cmds.push(["col", k2, new Uint8Array([0x56, col[0] * s | 0, col[1] * s | 0, col[2] * s | 0, 0x00, 0xf0, 0xaa])]);
+        } else {
+          if (c.last.col !== key) cmds.push(["col", key, new Uint8Array([0x7e, 0x00, 0x05, 0x03, col[0], col[1], col[2], 0x00, 0xef])]);
+          if (c.last.bri !== level) cmds.push(["bri", level, new Uint8Array([0x7e, 0x00, 0x01, level, 0x00, 0x00, 0x00, 0x00, 0xef])]);
+        }
+      }
+      if (!cmds.length) return;
+      c.busy = true; c.t = now;
+      (async () => {
+        for (const [k, v, bytes] of cmds) {
+          try { await write(c, bytes); c.last[k] = v; }
+          catch (e) { log("Write failed: " + e.message); c.ready = c.device.gatt.connected; break; }
+        }
+        c.busy = false;
+      })();
+    });
+  }
+
+  // ---------------- settings ----------------
+  $("gear").onclick = () => { $("roomName").value = state.roomName; $("fov").value = state.fov; $("fovVal").textContent = "· " + state.fov + "°"; $("settings").hidden = false; };
+  $("settingsDone").onclick = () => { $("settings").hidden = true; };
+  $("settings").addEventListener("click", e => { if (e.target.id === "settings") $("settings").hidden = true; });
+  $("roomName").oninput = e => { state.roomName = e.target.value || "My room"; $("roomTitle").textContent = state.roomName; save(); };
+  $("fov").oninput = e => { state.fov = +e.target.value; $("fovVal").textContent = "· " + state.fov + "°"; save(); };
+  $("resetBtn").onclick = () => { $("resetConfirm").hidden = false; };
+  $("resetNo").onclick = () => { $("resetConfirm").hidden = true; };
+  $("resetYes").onclick = () => { Object.keys(conns).forEach(disconnect); state.lights = []; selected = null; aligned = true; $("resetConfirm").hidden = true; $("settings").hidden = true; syncPins(); syncSheet(); setHint(); save(); };
+
+  let toastT;
+  function toast(m) { const t = $("toast"); t.textContent = m; t.classList.add("show"); clearTimeout(toastT); toastT = setTimeout(() => t.classList.remove("show"), 2600); }
+
+  // ---------------- boot ----------------
+  $("roomTitle").textContent = state.roomName;
+  syncPins(); syncSheet(); setHint();
+  requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>
